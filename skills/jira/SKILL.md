@@ -1,7 +1,7 @@
 ---
 name: jira
 description: >
-  Take actions against a Jira Cloud instance -- create, read, update, and search issues;
+  Take actions against a Jira Cloud or Server/Data Center instance -- create, read, update, and search issues;
   transition status; add comments; manage assignees; attach files; and discover projects/issue
   types/fields. Use this WHENEVER the user wants to create a Jira ticket/issue/epic/story/bug,
   look up or search Jira issues, move a ticket to a new status, comment on a Jira issue,
@@ -14,7 +14,7 @@ description: >
 
 # jira
 
-Talk to Jira Cloud directly via a bundled Node.js script -- no SDK, no build step.
+Talk to Jira Cloud or Server/Data Center directly via a bundled Node.js script -- no SDK, no build step.
 
 ## Quick start
 
@@ -22,10 +22,12 @@ Talk to Jira Cloud directly via a bundled Node.js script -- no SDK, no build ste
 2. Configure credentials -- see "Setup" below.
 3. Run `echo '{}' | node scripts/jira.mjs whoami` to confirm the credentials resolve and the
    Jira instance is reachable. If it fails with a "credentials not found" error, the script
-   is not interactive -- it won't prompt for input. Ask the user for their Jira base URL,
-   account email, and an API token (generated at
-   https://id.atlassian.com/manage-profile/security/api-tokens), then write
-   `~/.jira-credentials.json` yourself (see "Setup" below for the exact shape) and retry.
+   is not interactive -- it won't prompt for input. Ask the user whether their Jira is Cloud
+   or Server/Data Center, then for their base URL and either a Cloud API token (with account
+   email, generated at https://id.atlassian.com/manage-profile/security/api-tokens) or a
+   Server/DC Personal Access Token (generated from their Jira profile's Personal Access Tokens
+   page, no email needed). Write `~/.jira-credentials.json` yourself (see "Setup" below for the
+   exact shape) and retry.
 4. Run whatever action you need (see "Running an action" below for the shape, and
    `references/actions.md` for every action's exact payload).
 5. For anything that changes Jira (create/update/transition/comment/assign/attach), follow
@@ -33,17 +35,36 @@ Talk to Jira Cloud directly via a bundled Node.js script -- no SDK, no build ste
 
 ## Setup
 
-Credentials resolve from environment variables first, then `~/.jira-credentials.json`:
+Credentials resolve from environment variables first, then `~/.jira-credentials.json`. Two
+deployment types are supported, selected by `deploymentType` (`JIRA_DEPLOYMENT_TYPE` in env
+vars) -- it defaults to `"cloud"` when omitted:
 
+**Cloud** (`deploymentType: "cloud"`, the default):
 - `JIRA_BASE_URL` -- e.g. `https://yourcompany.atlassian.net`
 - `JIRA_EMAIL` -- the Atlassian account email
 - `JIRA_API_TOKEN` -- an API token from https://id.atlassian.com/manage-profile/security/api-tokens
 - `JIRA_PROJECT_KEY` -- optional default project (any action can override with its own `project`/`projectKey` field)
 
-Or create `~/.jira-credentials.json`:
+**Server/Data Center** (`deploymentType: "server"`):
+- `JIRA_BASE_URL` -- your company's Jira URL, e.g. `https://jira.yourcompany.com`
+- `JIRA_API_TOKEN` -- a Personal Access Token, generated from your Jira profile's Personal
+  Access Tokens page (not id.atlassian.com -- that's Cloud-only). No email needed.
+- `JIRA_PROJECT_KEY` -- optional default project, same as Cloud
+
+These are different token types tied to different Jira deployments -- a Cloud API token and a
+Server/DC Personal Access Token are not interchangeable, and using the wrong `deploymentType`
+for a given token will fail auth (401/403).
+
+Or create `~/.jira-credentials.json`, e.g. for Cloud:
 
 ```json
 { "baseUrl": "https://yourcompany.atlassian.net", "email": "you@example.com", "apiToken": "...", "projectKey": "PROJ" }
+```
+
+or for Server/Data Center:
+
+```json
+{ "baseUrl": "https://jira.yourcompany.com", "apiToken": "...", "deploymentType": "server", "projectKey": "PROJ" }
 ```
 
 Verify setup by running the `whoami` action (see below) before doing anything else.
@@ -92,10 +113,13 @@ Read-only actions -- `get-issue`, `search-issues`, `list-transitions`, `list-com
 
 - No `delete-issue` action -- delete issues manually in the Jira UI.
 - Description/comment markdown supports headings, paragraphs, bullet/numbered lists,
-  bold/italic, inline code, fenced code blocks, and links. Tables, panels, mentions, and emoji
+  bold/italic, inline code, fenced code blocks, and links -- converted to Atlassian Document
+  Format on Cloud, Jira wiki markup on Server/Data Center. Tables, panels, mentions, and emoji
   are not supported -- content in those forms round-trips as best-effort plain text.
   Headings and fenced code blocks are recognized even when glued directly to adjacent text
   (no blank line needed). Bullet/numbered lists still need a blank line separating them from
   surrounding paragraphs, and nested lists are not supported -- flatten them into a single list
-  or separate top-level lists instead.
+  or separate top-level lists instead. On Server/Data Center, the wiki-markup conversion round-trips
+  content this skill itself wrote reliably; wiki markup a person hand-authored directly in Jira's
+  web editor may not match this subset and falls back to best-effort plain text.
 - One-shot actions only -- this is not a continuous or bidirectional sync of any kind.

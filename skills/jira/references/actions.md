@@ -72,8 +72,9 @@ Payload: `{ key, body }` (add) or `{ key }` (list). `body` is markdown.
 
 ## set-assignee
 
-Payload: `{ key, accountId }` or `{ key, email }` -- if `email` is given, it's resolved to an
-`accountId` via Jira's user search first.
+Payload: `{ key, accountId }` (Cloud), `{ key, username }` (Server/Data Center), or
+`{ key, email }` (both) -- if `email` is given, it's resolved to an `accountId` (Cloud) or
+`username` (Server/DC) via Jira's user search first.
 
 ## attach-file
 
