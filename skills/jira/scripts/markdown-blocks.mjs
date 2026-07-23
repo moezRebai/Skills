@@ -48,6 +48,8 @@ export function parseBlock(block) {
   const isOrderedList = !isBulletList && /^\d+\.\s+/.test(lines[0]);
   if (isBulletList || isOrderedList) {
     const itemRe = isBulletList ? /^[-*]\s+(.*)$/ : /^\d+\.\s+(.*)$/;
+    // Lines that don't start a new item are continuation lines (wrapped text)
+    // of the item above them, folded in with a space.
     const itemTexts = [];
     for (const l of lines) {
       const m = l.match(itemRe);
@@ -85,7 +87,7 @@ export function splitIntoBlocks(markdown) {
       if (!inFence) flush();
       inFence = !inFence;
       current.push(line);
-      if (!inFence) flush();
+      if (!inFence) flush(); // a fence always starts its own block, even glued to prior text
       continue;
     }
     if (inFence) {
@@ -97,11 +99,17 @@ export function splitIntoBlocks(markdown) {
       continue;
     }
     if (/^#{1,6}\s+/.test(line)) {
+      // ATX headings are always their own block, per CommonMark, even without
+      // a blank line separating them from surrounding text.
       flush();
       blocks.push(line);
       continue;
     }
     if (/^(?:[-*]\s+|\d+\.\s+)/.test(line) && current.length && !/^(?:[-*]\s+|\d+\.\s+)/.test(current[0])) {
+      // A list item glued directly under non-list text (no blank line) still
+      // starts a new block -- otherwise it gets swallowed into that paragraph.
+      // A list item glued under an *already-open* list just continues it, and
+      // an indented continuation line of a wrapped item never matches here.
       flush();
     }
     current.push(line);
