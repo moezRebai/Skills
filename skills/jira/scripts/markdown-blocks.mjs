@@ -84,10 +84,10 @@ export function splitIntoBlocks(markdown) {
 
   for (const line of lines) {
     if (/^```/.test(line.trim())) {
-      if (!inFence) flush();
+      if (!inFence) flush(); // a fence always starts its own block, even glued to prior text
       inFence = !inFence;
       current.push(line);
-      if (!inFence) flush(); // a fence always starts its own block, even glued to prior text
+      if (!inFence) flush();
       continue;
     }
     if (inFence) {
