@@ -2,8 +2,8 @@
 
 ## Purpose
 
-A generic, project-agnostic agent skill for taking actions against Jira Cloud:
-create/read/update issues, search via JQL, transition status, comment, manage assignee,
+A generic, project-agnostic agent skill for taking actions against Jira Cloud or Server/Data
+Center: create/read/update issues, search via JQL, transition status, comment, manage assignee,
 attach files, and discover project/issue-type/field metadata. Usable from any project.
 
 ## Location
@@ -31,7 +31,9 @@ jira/
     jira.mjs                   — CLI entry point: reads action name from argv, JSON payload from stdin
     client.mjs                 — JiraClient class (fetch-based, no SDK dependency)
     credentials.mjs            — credential resolution (env vars -> config file)
-    adf.mjs                    — markdown <-> ADF conversion (basic subset)
+    markdown-blocks.mjs        — shared markdown block/inline parser (used by adf.mjs and wiki.mjs)
+    adf.mjs                    — markdown <-> ADF conversion (Cloud, basic subset)
+    wiki.mjs                   — markdown <-> Jira wiki markup conversion (Server/DC, same subset)
     fake-jira-server.mjs       — local node:http fake Jira server, used only by tests
     *.test.mjs                 — one test file per module (Node's built-in test runner)
   references/
@@ -103,14 +105,24 @@ plain text extraction for anything outside the subset.
 
 Single active profile, resolved in this order:
 
-1. Environment variables: `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY`.
+1. Environment variables: `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY`,
+   `JIRA_DEPLOYMENT_TYPE`.
 2. Fallback config file: `~/.jira-credentials.json` (home-directory scoped, not repo-scoped,
    since this skill is meant to be used across arbitrary projects/repos).
 
 `JIRA_PROJECT_KEY` / the config file's `projectKey` is only a **default** — any action that
-takes a `project`/`projectKey` field can override it per-call. Auth is HTTP Basic
-(`base64(email:apiToken)`). `whoami` is the recommended way to verify credentials are resolved
-correctly before doing anything else.
+takes a `project`/`projectKey` field can override it per-call. `whoami` is the recommended way
+to verify credentials are resolved correctly before doing anything else.
+
+`deploymentType` (`JIRA_DEPLOYMENT_TYPE` in env vars) selects between the two supported Jira
+deployments, defaulting to `"cloud"` when absent:
+
+- **cloud**: auth is HTTP Basic (`base64(email:apiToken)`) against `/rest/api/3`; `apiToken` is
+  a Cloud API token; `email` is required.
+- **server**: auth is HTTP Bearer (`apiToken`) against `/rest/api/2`; `apiToken` is a
+  Server/Data Center Personal Access Token; `email` is not required. Descriptions/comments
+  convert to/from Jira wiki markup instead of ADF, and assignees are identified by `name`
+  (username) instead of `accountId`.
 
 ## Safety policy
 
