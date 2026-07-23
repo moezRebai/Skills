@@ -16,7 +16,23 @@ async function withServer(fn) {
     projectKey: "TEST",
   });
   try {
-    await fn(client);
+    await fn(client, fake);
+  } finally {
+    await fake.close();
+  }
+}
+
+async function withServerModeClient(fn) {
+  const fake = createFakeJiraServer();
+  const port = await fake.listen();
+  const client = new JiraClient({
+    baseUrl: `http://127.0.0.1:${port}`,
+    apiToken: "pat-token-123",
+    deploymentType: "server",
+    projectKey: "TEST",
+  });
+  try {
+    await fn(client, fake);
   } finally {
     await fake.close();
   }
@@ -193,5 +209,78 @@ test("attachFile throws a descriptive error for a missing issue", async () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+test("cloud mode sends Basic auth (regression check)", async () => {
+  await withServer(async (client, fake) => {
+    await client.whoami();
+    assert.match(fake.getLastAuthHeader(), /^Basic /);
+  });
+});
+
+test("server mode sends Bearer auth instead of Basic", async () => {
+  await withServerModeClient(async (client, fake) => {
+    await client.whoami();
+    assert.equal(fake.getLastAuthHeader(), "Bearer pat-token-123");
+  });
+});
+
+test("server mode createIssue/getIssue round-trips a markdown description through wiki markup", async () => {
+  await withServerModeClient(async (client) => {
+    const created = await client.createIssue({
+      issueType: "Story",
+      summary: "A story",
+      description: "Some **bold** text",
+    });
+    const issue = await client.getIssue({ key: created.key });
+    assert.equal(issue.description, "Some **bold** text");
+  });
+});
+
+test("server mode searchIssues uses the classic /search endpoint, not /search/jql", async () => {
+  await withServerModeClient(async (client) => {
+    const epic = await client.createIssue({ issueType: "Epic", summary: "Epic parent" });
+    await client.createIssue({ issueType: "Story", summary: "Child 1", parentKey: epic.key });
+    await client.createIssue({ issueType: "Story", summary: "Unrelated" });
+    const results = await client.searchIssues({ jql: `parent = ${epic.key}` });
+    assert.equal(results.length, 1);
+    assert.equal(results[0].summary, "Child 1");
+  });
+});
+
+test("server mode setAssignee with a username sets it directly", async () => {
+  await withServerModeClient(async (client) => {
+    const created = await client.createIssue({ issueType: "Bug", summary: "Needs work" });
+    await client.setAssignee({ key: created.key, username: "jdoe" });
+    const issue = await client.getIssue({ key: created.key });
+    assert.equal(issue.assignee.name, "jdoe");
+  });
+});
+
+test("server mode setAssignee with an email resolves it to a username first", async () => {
+  await withServerModeClient(async (client) => {
+    const created = await client.createIssue({ issueType: "Bug", summary: "Needs work" });
+    const result = await client.setAssignee({ key: created.key, email: "someone@example.com" });
+    assert.equal(result.username, "someone@example.com");
+  });
+});
+
+test("server mode addComment/listComments round-trips a markdown comment through wiki markup", async () => {
+  await withServerModeClient(async (client) => {
+    const created = await client.createIssue({ issueType: "Bug", summary: "Needs work" });
+    await client.addComment({ key: created.key, body: "This is *important*" });
+    const comments = await client.listComments({ key: created.key });
+    assert.equal(comments.length, 1);
+    assert.equal(comments[0].body, "This is *important*");
+  });
+});
+
+test("server mode listProjects/listIssueTypes/listFields use /rest/api/2", async () => {
+  await withServerModeClient(async (client) => {
+    const projects = await client.listProjects();
+    assert.deepEqual(projects, [{ key: "TEST", name: "Test Project" }]);
+    const types = await client.listIssueTypes();
+    assert.ok(types.some((t) => t.name === "Epic"));
   });
 });
