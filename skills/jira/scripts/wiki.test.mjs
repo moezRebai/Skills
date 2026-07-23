@@ -57,3 +57,17 @@ test("wikiToMarkdown returns an empty string for empty input", () => {
   assert.equal(wikiToMarkdown(""), "");
   assert.equal(wikiToMarkdown(undefined), "");
 });
+
+test("does not corrupt literal underscores in filenames or identifiers", () => {
+  const markdown = "See the my_file_name.txt config and check snake_case_value";
+  const wiki = markdownToWiki(markdown);
+  assert.equal(wiki, markdown);
+  assert.equal(wikiToMarkdown(wiki), markdown);
+});
+
+test("does not corrupt double-underscore identifiers like __init__", () => {
+  const markdown = "Run __init__ then check the result";
+  const wiki = markdownToWiki(markdown);
+  assert.equal(wiki, markdown);
+  assert.equal(wikiToMarkdown(wiki), markdown);
+});

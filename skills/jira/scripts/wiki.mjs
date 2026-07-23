@@ -95,7 +95,7 @@ function splitWikiBlocks(wiki) {
 
 function inlineWikiToMarkdown(text) {
   return text.replace(
-    /\{\{([^}]+)\}\}|\*([^*]+)\*|_([^_]+)_|\[([^\]|]+)\|([^\]]+)\]/g,
+    /\{\{([^}]+)\}\}|\*([^*]+)\*|(?<!\w)_([^_]+)_(?!\w)|\[([^\]|]+)\|([^\]]+)\]/g,
     (match, code, bold, italic, linkText, href) => {
       if (code !== undefined) return `\`${code}\``;
       if (bold !== undefined) return `**${bold}**`;
