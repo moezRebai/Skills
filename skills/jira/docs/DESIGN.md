@@ -69,25 +69,29 @@ Full CRUD except delete, plus discovery and file attachments:
 | `create-issue` | `{ project?, issueType, summary, description?, parentKey?, labels?, assignee? }` | `project` falls back to the configured default project key if omitted |
 | `get-issue` | `{ key, fields? }` | `fields` optional list to limit response; defaults to a sensible standard set |
 | `update-issue` | `{ key, fields: { summary?, description?, labels?, ... } }` | generic partial update |
-| `search-issues` | `{ jql, fields?, maxResults? }` | arbitrary JQL; uses Jira's current `POST /rest/api/3/search/jql` endpoint (the older `GET /rest/api/3/search` is deprecated/removed) |
+| `search-issues` | `{ jql, fields?, maxResults? }` | arbitrary JQL; Cloud uses `POST /rest/api/3/search/jql` (the older `GET /rest/api/3/search` is deprecated/removed there), Server/DC uses the classic `POST /rest/api/2/search` (it has no `/search/jql`) |
 | `list-transitions` | `{ key }` | lists available transitions with id + name |
 | `transition-issue` | `{ key, transition }` | `transition` may be a name (case-insensitive) or an id |
-| `add-comment` | `{ key, body }` | `body` is markdown, converted to ADF |
-| `list-comments` | `{ key }` | returns comments with ADF converted back to markdown |
-| `set-assignee` | `{ key, accountId }` or `{ key, email }` | if `email` given, resolves to `accountId` via `/rest/api/3/user/search` first |
+| `add-comment` | `{ key, body }` | `body` is markdown, converted to ADF (Cloud) or Jira wiki markup (Server/DC) |
+| `list-comments` | `{ key }` | returns comments with ADF/wiki markup converted back to markdown |
+| `set-assignee` | `{ key, accountId }` (Cloud), `{ key, username }` (Server/DC), or `{ key, email }` (both) | if `email` given, resolves to `accountId` via `/rest/api/3/user/search` (Cloud) or to `username` via `/rest/api/2/user/search` (Server/DC) first |
 | `attach-file` | `{ key, filePath }` | uploads a real file as a Jira attachment via multipart upload |
-| `list-projects` | `{}` | `GET /rest/api/3/project/search` |
+| `list-projects` | `{}` | `GET /rest/api/3/project/search` (Cloud) or `/rest/api/2/project/search` (Server/DC) |
 | `list-issue-types` | `{ projectKey? }` | global list, or scoped to a project if given |
-| `list-fields` | `{}` | `GET /rest/api/3/field` |
-| `whoami` | `{}` | `GET /rest/api/3/myself` — verifies credentials and returns the caller's `accountId` (useful for "assign to me") |
+| `list-fields` | `{}` | `GET /rest/api/3/field` (Cloud) or `/rest/api/2/field` (Server/DC) |
+| `whoami` | `{}` | `GET /rest/api/3/myself` (Cloud) or `/rest/api/2/myself` (Server/DC) — verifies credentials and returns the caller's `accountId` (Cloud) / `name` (Server/DC) (useful for "assign to me") |
 
-## Text conversion (ADF)
+## Text conversion (ADF / wiki markup)
 
-Jira stores descriptions and comment bodies as Atlassian Document Format (ADF), not plain
-text or markdown, so a naive "send the raw string" approach only round-trips a single plain
-paragraph — too limited for general use.
+Jira stores descriptions and comment bodies as Atlassian Document Format (ADF) on Cloud, or
+plain-string Jira wiki markup on Server/Data Center — not plain text or markdown either way —
+so a naive "send the raw string" approach only round-trips a single plain paragraph, too
+limited for general use.
 
-This skill converts a **basic markdown subset** both directions:
+This skill converts a **basic markdown subset** both directions, to ADF (`adf.mjs`) on Cloud
+and to Jira wiki markup (`wiki.mjs`) on Server/DC — both built on the same shared block/inline
+parser (`markdown-blocks.mjs`), so the supported subset and its edge-case handling are
+identical between the two:
 - Headings (`#`–`######`)
 - Paragraphs
 - Flat bullet and numbered lists (single-line items only)
@@ -99,7 +103,10 @@ Not supported (documented as known gaps in `references/actions.md` and `SKILL.md
 panels, mentions, emojis, and nested or multi-line list items (a list item that wraps onto a
 continuation line, or has its own sub-bullets, currently falls through to plain-paragraph
 parsing and loses its list structure). `get-issue`/`list-comments` fall back to best-effort
-plain text extraction for anything outside the subset.
+plain text extraction for anything outside the subset. On Server/DC specifically, `wikiToMarkdown`
+only guarantees round-tripping content this skill itself wrote — wiki markup a person
+hand-authored directly in Jira's web editor may not match this subset and also falls back to
+best-effort plain text.
 
 ## Credentials
 
