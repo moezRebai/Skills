@@ -4,6 +4,7 @@ export function createFakeJiraServer() {
   const issues = new Map();
   const comments = new Map();
   let nextId = 1;
+  let lastAuthHeader = null;
   const PROJECT_KEY = "TEST";
   const TRANSITIONS = [
     { id: "11", name: "To Do" },
@@ -47,8 +48,9 @@ export function createFakeJiraServer() {
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     const path = url.pathname;
+    lastAuthHeader = req.headers.authorization ?? null;
     try {
-      if (req.method === "POST" && path === "/rest/api/3/issue") {
+      if (req.method === "POST" && (path === "/rest/api/3/issue" || path === "/rest/api/2/issue")) {
         const body = await readBody(req);
         const key = nextKey();
         issues.set(key, { key, fields: body.fields });
@@ -56,7 +58,7 @@ export function createFakeJiraServer() {
         return sendJson(res, 201, { key });
       }
 
-      const issueMatch = path.match(/^\/rest\/api\/3\/issue\/([\w-]+)$/);
+      const issueMatch = path.match(/^\/rest\/api\/[23]\/issue\/([\w-]+)$/);
       if (req.method === "GET" && issueMatch) {
         const issue = issues.get(issueMatch[1]);
         if (!issue) return sendJson(res, 404, { errorMessages: ["Issue not found"] });
@@ -71,7 +73,7 @@ export function createFakeJiraServer() {
         return res.end();
       }
 
-      if (req.method === "POST" && path === "/rest/api/3/search/jql") {
+      if (req.method === "POST" && (path === "/rest/api/3/search/jql" || path === "/rest/api/2/search")) {
         const body = await readBody(req);
         const jql = body.jql ?? "";
         const parentMatch = jql.match(/parent\s*=\s*([\w-]+)/);
@@ -80,7 +82,7 @@ export function createFakeJiraServer() {
         return sendJson(res, 200, { issues: results.map((i) => ({ key: i.key, fields: i.fields })) });
       }
 
-      const transMatch = path.match(/^\/rest\/api\/3\/issue\/([\w-]+)\/transitions$/);
+      const transMatch = path.match(/^\/rest\/api\/[23]\/issue\/([\w-]+)\/transitions$/);
       if (transMatch) {
         const issue = issues.get(transMatch[1]);
         if (!issue) return sendJson(res, 404, { errorMessages: ["Issue not found"] });
@@ -94,7 +96,7 @@ export function createFakeJiraServer() {
         }
       }
 
-      const commentMatch = path.match(/^\/rest\/api\/3\/issue\/([\w-]+)\/comment$/);
+      const commentMatch = path.match(/^\/rest\/api\/[23]\/issue\/([\w-]+)\/comment$/);
       if (commentMatch) {
         const key = commentMatch[1];
         if (!issues.has(key)) return sendJson(res, 404, { errorMessages: ["Issue not found"] });
@@ -108,37 +110,42 @@ export function createFakeJiraServer() {
         if (req.method === "GET") return sendJson(res, 200, { comments: comments.get(key) });
       }
 
-      const assigneeMatch = path.match(/^\/rest\/api\/3\/issue\/([\w-]+)\/assignee$/);
+      const assigneeMatch = path.match(/^\/rest\/api\/[23]\/issue\/([\w-]+)\/assignee$/);
       if (req.method === "PUT" && assigneeMatch) {
         const issue = issues.get(assigneeMatch[1]);
         if (!issue) return sendJson(res, 404, { errorMessages: ["Issue not found"] });
         const body = await readBody(req);
-        issue.fields.assignee = { accountId: body.accountId };
+        issue.fields.assignee = body.accountId ? { accountId: body.accountId } : { name: body.name };
         res.writeHead(204);
         return res.end();
       }
 
-      if (req.method === "GET" && path === "/rest/api/3/user/search") {
-        const query = url.searchParams.get("query") ?? "";
-        return sendJson(res, 200, [{ accountId: `acc-${query}`, displayName: query }]);
+      if (req.method === "GET" && (path === "/rest/api/3/user/search" || path === "/rest/api/2/user/search")) {
+        const q = url.searchParams.get("query") ?? url.searchParams.get("username") ?? "";
+        return sendJson(res, 200, [{ accountId: `acc-${q}`, name: q, displayName: q }]);
       }
 
-      if (req.method === "GET" && path === "/rest/api/3/myself") {
-        return sendJson(res, 200, { accountId: "acc-me", displayName: "Fake User", emailAddress: "me@example.com" });
+      if (req.method === "GET" && (path === "/rest/api/3/myself" || path === "/rest/api/2/myself")) {
+        return sendJson(res, 200, {
+          accountId: "acc-me",
+          name: "fakeuser",
+          displayName: "Fake User",
+          emailAddress: "me@example.com",
+        });
       }
 
-      if (req.method === "GET" && path === "/rest/api/3/project/search") {
+      if (req.method === "GET" && (path === "/rest/api/3/project/search" || path === "/rest/api/2/project/search")) {
         return sendJson(res, 200, { values: [{ key: PROJECT_KEY, name: "Test Project" }] });
       }
 
-      if (req.method === "GET" && path === "/rest/api/3/issuetype") {
+      if (req.method === "GET" && (path === "/rest/api/3/issuetype" || path === "/rest/api/2/issuetype")) {
         return sendJson(res, 200, [
           { id: "1", name: "Epic" },
           { id: "2", name: "Story" },
           { id: "3", name: "Bug" },
         ]);
       }
-      const createMetaMatch = path.match(/^\/rest\/api\/3\/issue\/createmeta\/([\w-]+)\/issuetypes$/);
+      const createMetaMatch = path.match(/^\/rest\/api\/[23]\/issue\/createmeta\/([\w-]+)\/issuetypes$/);
       if (req.method === "GET" && createMetaMatch) {
         return sendJson(res, 200, {
           issueTypes: [
@@ -150,7 +157,7 @@ export function createFakeJiraServer() {
         });
       }
 
-      const attachmentsMatch = path.match(/^\/rest\/api\/3\/issue\/([\w-]+)\/attachments$/);
+      const attachmentsMatch = path.match(/^\/rest\/api\/[23]\/issue\/([\w-]+)\/attachments$/);
       if (req.method === "POST" && attachmentsMatch) {
         const issue = issues.get(attachmentsMatch[1]);
         if (!issue) return sendJson(res, 404, { errorMessages: ["Issue not found"] });
@@ -163,7 +170,7 @@ export function createFakeJiraServer() {
         return sendJson(res, 200, [{ id, filename, size: content.length }]);
       }
 
-      if (req.method === "GET" && path === "/rest/api/3/field") {
+      if (req.method === "GET" && (path === "/rest/api/3/field" || path === "/rest/api/2/field")) {
         return sendJson(res, 200, [
           { id: "summary", name: "Summary" },
           { id: "description", name: "Description" },
@@ -184,6 +191,9 @@ export function createFakeJiraServer() {
     },
     close() {
       return new Promise((resolve) => server.close(resolve));
+    },
+    getLastAuthHeader() {
+      return lastAuthHeader;
     },
   };
 }
