@@ -44,13 +44,24 @@ function parseBlock(block) {
     return [node];
   }
 
-  const isBulletList = lines.every((l) => /^[-*]\s+/.test(l));
-  const isOrderedList = !isBulletList && lines.every((l) => /^\d+\.\s+/.test(l));
+  const isBulletList = /^[-*]\s+/.test(lines[0]);
+  const isOrderedList = !isBulletList && /^\d+\.\s+/.test(lines[0]);
   if (isBulletList || isOrderedList) {
     const itemRe = isBulletList ? /^[-*]\s+(.*)$/ : /^\d+\.\s+(.*)$/;
-    const items = lines.map((l) => ({
+    // Lines that don't start a new item are continuation lines (wrapped text)
+    // of the item above them, folded in with a space.
+    const itemTexts = [];
+    for (const l of lines) {
+      const m = l.match(itemRe);
+      if (m) {
+        itemTexts.push(m[1]);
+      } else if (itemTexts.length) {
+        itemTexts[itemTexts.length - 1] += " " + l.trim();
+      }
+    }
+    const items = itemTexts.map((text) => ({
       type: "listItem",
-      content: [{ type: "paragraph", content: parseInline(l.match(itemRe)[1]) }],
+      content: [{ type: "paragraph", content: parseInline(text) }],
     }));
     return [{ type: isBulletList ? "bulletList" : "orderedList", content: items }];
   }
@@ -63,26 +74,47 @@ function splitIntoBlocks(markdown) {
   const blocks = [];
   let current = [];
   let inFence = false;
+
+  const flush = () => {
+    if (current.length) {
+      blocks.push(current.join("\n"));
+      current = [];
+    }
+  };
+
   for (const line of lines) {
     if (/^```/.test(line.trim())) {
+      if (!inFence) flush(); // a fence always starts its own block, even glued to prior text
       inFence = !inFence;
       current.push(line);
-      if (!inFence) {
-        blocks.push(current.join("\n"));
-        current = [];
-      }
+      if (!inFence) flush();
       continue;
     }
-    if (!inFence && line.trim() === "") {
-      if (current.length) {
-        blocks.push(current.join("\n"));
-        current = [];
-      }
+    if (inFence) {
+      current.push(line);
       continue;
+    }
+    if (line.trim() === "") {
+      flush();
+      continue;
+    }
+    if (/^#{1,6}\s+/.test(line)) {
+      // ATX headings are always their own block, per CommonMark, even without
+      // a blank line separating them from surrounding text.
+      flush();
+      blocks.push(line);
+      continue;
+    }
+    if (/^(?:[-*]\s+|\d+\.\s+)/.test(line) && current.length && !/^(?:[-*]\s+|\d+\.\s+)/.test(current[0])) {
+      // A list item glued directly under non-list text (no blank line) still
+      // starts a new block -- otherwise it gets swallowed into that paragraph.
+      // A list item glued under an *already-open* list just continues it, and
+      // an indented continuation line of a wrapped item never matches here.
+      flush();
     }
     current.push(line);
   }
-  if (current.length) blocks.push(current.join("\n"));
+  flush();
   return blocks.map((b) => b.trim()).filter((b) => b.length > 0);
 }
 

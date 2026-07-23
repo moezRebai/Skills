@@ -7,7 +7,10 @@ stdin. All examples below assume you're in `C:\Solutions\skills\jira`.
 
 Payload: `{ project?, issueType, summary, description?, parentKey?, labels?, assignee? }`
 
-- `project` -- project key; falls back to `JIRA_PROJECT_KEY` / the config file's `projectKey` if omitted.
+- `project` -- project key; falls back to `JIRA_PROJECT_KEY` / the config file's `projectKey` if
+  omitted. If the user works across multiple projects on this Jira site, supply this explicitly
+  (ask the user which project rather than relying on the fallback -- see `SKILL.md`'s "Choosing
+  a project for create-issue").
 - `issueType` -- e.g. `"Epic"`, `"Story"`, `"Bug"` (use `list-issue-types` to check what's available).
 - `description` -- markdown (see `SKILL.md`'s "Known limitations" for the supported subset).
 - `parentKey` -- an Epic's key, to create this issue as a Story nested under it.

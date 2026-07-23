@@ -120,6 +120,12 @@ correctly before doing anything else.
 `attach-file` — all of these hit a real Jira instance and aren't easily reversible from here.
 Read-only actions (`get-issue`, `search-issues`, `list-*`, `whoami`) run without confirmation.
 
+For `create-issue` specifically, project selection is part of what gets confirmed, not just the
+mutation itself: the configured default project (`JIRA_PROJECT_KEY` / `projectKey`) is a
+convenience fallback for single-project users, but `SKILL.md` instructs the agent to ask which
+project to use whenever it isn't already clear from context and the user works across more than
+one project — silently defaulting risks creating an issue in the wrong project unnoticed.
+
 ## Error handling
 
 `client.mjs` throws on any non-2xx response, including the response body. `jira.mjs`'s
