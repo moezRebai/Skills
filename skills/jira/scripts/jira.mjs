@@ -48,13 +48,24 @@ export function describeError(err) {
   return err.message;
 }
 
+// Accept "issueKey" as an alias for "key" -- both are common names for the same
+// thing, and every key-based action (get-issue, update-issue, transition-issue,
+// add-comment, list-comments, set-assignee, attach-file, list-transitions)
+// benefits from this normalization happening once, here, rather than in each one.
+function normalizePayload(payload) {
+  if (payload && payload.key === undefined && payload.issueKey !== undefined) {
+    return { ...payload, key: payload.issueKey };
+  }
+  return payload;
+}
+
 export async function run(action, payload, credentials = resolveCredentials()) {
   const handler = ACTIONS[action];
   if (!handler) {
     throw new Error(`Unknown action "${action}". Valid actions: ${Object.keys(ACTIONS).join(", ")}`);
   }
   const client = new JiraClient(credentials);
-  return handler(client, payload);
+  return handler(client, normalizePayload(payload));
 }
 
 async function main() {

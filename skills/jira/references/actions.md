@@ -3,6 +3,10 @@
 Every action is invoked as `node scripts/jira.mjs <action>` with a JSON payload piped via
 stdin. All examples below assume you're in `C:\Solutions\skills\jira`.
 
+Every payload below is documented with `key` as the issue-key field name, but `issueKey` is
+also accepted as an alias (normalized to `key` before dispatch) -- use whichever reads more
+naturally when constructing the payload.
+
 ## create-issue
 
 Payload: `{ project?, issueType, summary, description?, parentKey?, labels?, assignee? }`

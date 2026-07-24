@@ -49,6 +49,42 @@ test("run() dispatches attach-file against a live fake server", async () => {
   }
 });
 
+test("run() accepts issueKey as an alias for key on get-issue", async () => {
+  const fake = createFakeJiraServer();
+  const port = await fake.listen();
+  try {
+    const credentials = {
+      baseUrl: `http://127.0.0.1:${port}`,
+      email: "me@example.com",
+      apiToken: "t",
+      projectKey: "TEST",
+    };
+    const created = await run("create-issue", { issueType: "Bug", summary: "Alias test" }, credentials);
+    const result = await run("get-issue", { issueKey: created.key }, credentials);
+    assert.equal(result.key, created.key);
+  } finally {
+    await fake.close();
+  }
+});
+
+test("run() prefers key over issueKey when both are given", async () => {
+  const fake = createFakeJiraServer();
+  const port = await fake.listen();
+  try {
+    const credentials = {
+      baseUrl: `http://127.0.0.1:${port}`,
+      email: "me@example.com",
+      apiToken: "t",
+      projectKey: "TEST",
+    };
+    const created = await run("create-issue", { issueType: "Bug", summary: "Alias precedence" }, credentials);
+    const result = await run("get-issue", { key: created.key, issueKey: "TEST-999" }, credentials);
+    assert.equal(result.key, created.key);
+  } finally {
+    await fake.close();
+  }
+});
+
 test("run() throws a descriptive error for an unknown action", async () => {
   await assert.rejects(
     () => run("delete-issue", {}, { baseUrl: "http://x", email: "e", apiToken: "t" }),
