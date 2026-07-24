@@ -1,6 +1,17 @@
 import { createServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-export function createFakeJiraServer() {
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/** Path to a long-lived, test-only self-signed cert/key pair (CN/SAN 127.0.0.1)
+ * used by createFakeJiraServer({ https: true }) to exercise real TLS validation. */
+export const SELF_SIGNED_CERT_PATH = join(__dirname, "test-fixtures", "self-signed-cert.pem");
+const SELF_SIGNED_KEY_PATH = join(__dirname, "test-fixtures", "self-signed-key.pem");
+
+export function createFakeJiraServer({ https = false } = {}) {
   const issues = new Map();
   const comments = new Map();
   let nextId = 1;
@@ -45,7 +56,7 @@ export function createFakeJiraServer() {
     };
   }
 
-  const server = createServer(async (req, res) => {
+  const handler = async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     const path = url.pathname;
     lastAuthHeader = req.headers.authorization ?? null;
@@ -181,7 +192,14 @@ export function createFakeJiraServer() {
     } catch (err) {
       sendJson(res, 500, { errorMessages: [String(err)] });
     }
-  });
+  };
+
+  const server = https
+    ? createHttpsServer(
+        { cert: readFileSync(SELF_SIGNED_CERT_PATH), key: readFileSync(SELF_SIGNED_KEY_PATH) },
+        handler
+      )
+    : createServer(handler);
 
   return {
     listen(port = 0) {

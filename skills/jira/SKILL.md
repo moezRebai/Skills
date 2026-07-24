@@ -16,6 +16,19 @@ description: >
 
 Talk to Jira Cloud or Server/Data Center directly via a bundled Node.js script -- no SDK, no build step.
 
+## Prerequisites
+
+- Node.js 18+ (for native `fetch`).
+- Jira credentials, depending on deployment type:
+  - **Cloud** -- an Atlassian account email and an API token from
+    https://id.atlassian.com/manage-profile/security/api-tokens.
+  - **Server/Data Center** -- a Personal Access Token generated from the user's Jira profile's
+    Personal Access Tokens page (not id.atlassian.com -- that's Cloud-only). No email needed.
+- **Server/Data Center only, if the instance uses a self-signed or internal CA certificate**:
+  either the internal CA's certificate file (to set `NODE_EXTRA_CA_CERTS`, the proper fix) or
+  willingness to accept disabled TLS verification (`allowInsecureTls`, a last resort). See
+  "Self-signed or internal CA certificates" below.
+
 ## Quick start
 
 1. Make sure Node.js 18+ is available (`node --version`).
@@ -68,6 +81,29 @@ or for Server/Data Center:
 ```
 
 Verify setup by running the `whoami` action (see below) before doing anything else.
+
+### Self-signed or internal CA certificates
+
+If `whoami` (or any action) fails with a TLS/certificate error against a Server/Data Center
+instance on an internal domain, the instance's certificate is likely signed by an internal or
+self-signed CA that Node doesn't trust by default. Two options, in order of preference:
+
+- **Set `NODE_EXTRA_CA_CERTS`** to the internal CA's certificate file. This is a standard
+  Node.js environment variable, not specific to this skill, and Node only reads it once at
+  process startup -- setting it in `~/.jira-credentials.json` would have no effect, since the
+  credentials file is read *after* the process has already started. It must exist as a real
+  environment variable *before* the skill's `node` process launches, which in practice means
+  setting it persistently at the OS level (a one-time setup step, not something to redo per
+  session):
+  - **Windows**: `setx NODE_EXTRA_CA_CERTS "C:\path\to\internal-ca.pem"`, then restart any
+    terminal/app (including Claude Code) that should pick it up -- `setx` only affects new
+    processes started after it runs, not the current session.
+  - **macOS/Linux**: add `export NODE_EXTRA_CA_CERTS=/path/to/internal-ca.pem` to your shell
+    profile (`~/.zshrc`, `~/.bashrc`, etc.), then restart your terminal/app.
+  This properly verifies the certificate chain, unlike the option below.
+- **Set `allowInsecureTls`** (`JIRA_ALLOW_INSECURE_TLS=true` in env vars, or `"allowInsecureTls": true`
+  in `~/.jira-credentials.json`) only if you can't obtain the CA certificate. This disables TLS
+  certificate verification for this skill's requests -- insecure, last resort.
 
 ## Running an action
 

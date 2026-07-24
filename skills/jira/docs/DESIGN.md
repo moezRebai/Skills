@@ -113,7 +113,7 @@ best-effort plain text.
 Single active profile, resolved in this order:
 
 1. Environment variables: `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY`,
-   `JIRA_DEPLOYMENT_TYPE`.
+   `JIRA_DEPLOYMENT_TYPE`, `JIRA_ALLOW_INSECURE_TLS`.
 2. Fallback config file: `~/.jira-credentials.json` (home-directory scoped, not repo-scoped,
    since this skill is meant to be used across arbitrary projects/repos).
 
@@ -130,6 +130,28 @@ deployments, defaulting to `"cloud"` when absent:
   Server/Data Center Personal Access Token; `email` is not required. Descriptions/comments
   convert to/from Jira wiki markup instead of ADF, and assignees are identified by `name`
   (username) instead of `accountId`.
+
+`allowInsecureTls` (`JIRA_ALLOW_INSECURE_TLS` in env vars, boolean-coerced, defaults to `false`)
+disables TLS certificate verification for this skill's requests only. It exists for Server/DC
+instances on internal domains with a self-signed or internally-issued certificate that Node
+doesn't trust by default. There is deliberately **no** `caCertPath`-style credential field for
+proper CA verification — `NODE_EXTRA_CA_CERTS` is a standard Node env var that already does this,
+but Node reads it once at process bootstrap (confirmed empirically: setting it via `process.env`
+after the process has already started, even before any TLS connection, has no effect). Supporting
+it as a script-configurable field would require the CLI to re-exec itself as a child process with
+the env var set at spawn time — real added complexity (stdio forwarding, doubled startup, a new
+failure mode) for something the user can already get for free by exporting `NODE_EXTRA_CA_CERTS`
+themselves before invoking the skill. `SKILL.md` documents this as the preferred option, with
+`allowInsecureTls` as the insecure fallback.
+
+`client.mjs`'s `withTlsEnv()` implements `allowInsecureTls` by toggling
+`process.env.NODE_TLS_REJECT_UNAUTHORIZED` around each `fetch()` call and restoring its prior
+value afterward (that variable, unlike `NODE_EXTRA_CA_CERTS`, is read per-connection, so this
+stays scoped rather than affecting the whole process for its lifetime). A custom `fetch`
+`dispatcher`/`Agent` (e.g. via `undici`'s `Agent({connect: {ca, rejectUnauthorized}})`) was
+considered and rejected: `node:undici` is not an importable built-in module in the Node version
+this was built against (`ERR_UNKNOWN_BUILTIN_MODULE`), and adding `undici` as an npm dependency
+would break this skill's zero-dependency design.
 
 ## Safety policy
 
@@ -152,13 +174,24 @@ top-level dispatch catches any thrown error, prints `{"error": "<message>"}` to 
 exits with code 1 — giving the calling agent a structured, parseable failure instead of a raw
 stack trace.
 
+`jira.mjs`'s `describeError()` special-cases TLS/certificate failures: if the caught error's
+`.cause.code` (set by undici on `fetch` failures) matches a known certificate-error code (e.g.
+`DEPTH_ZERO_SELF_SIGNED_CERT`, `UNABLE_TO_VERIFY_LEAF_SIGNATURE`), the error message gets an
+actionable hint pointing at `NODE_EXTRA_CA_CERTS`/`allowInsecureTls` instead of surfacing as a
+bare, unhelpful `fetch failed`. It keys strictly on the cause code, not on message text, so
+ordinary network errors (`ECONNREFUSED`, `ENOTFOUND`) aren't mislabeled as certificate problems.
+
 ## Testing
 
 `scripts/fake-jira-server.mjs` spins up a local `node:http` server that mimics the relevant
 Jira REST endpoints (issue CRUD, search, transitions, comments, assignee, attachments,
 discovery) — including a real multipart parser for attachment uploads, so tests are genuine
-round trips rather than mocked. Each module has its own `*.test.mjs` file, run via Node's
-built-in test runner:
+round trips rather than mocked. Passing `{ https: true }` instead starts the same handler on a
+`node:https` server using a long-lived, test-only self-signed cert/key pair committed under
+`scripts/test-fixtures/` (generated once via `openssl`, not regenerated at test time, so tests
+don't depend on `openssl` being installed) — needed because the plain `node:http` server can't
+exercise real TLS certificate validation, which `allowInsecureTls`'s tests require. Each module
+has its own `*.test.mjs` file, run via Node's built-in test runner:
 
 ```
 node --test scripts/*.test.mjs

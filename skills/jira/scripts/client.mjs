@@ -5,6 +5,23 @@ import { markdownToWiki, wikiToMarkdown } from "./wiki.mjs";
 
 const API_BASE = { cloud: "/rest/api/3", server: "/rest/api/2" };
 
+// NODE_TLS_REJECT_UNAUTHORIZED is read on every TLS connect, so toggling it
+// around a single fetch() and restoring it afterward keeps the effect scoped
+// to that call. Safe because this CLI issues one action per process
+// invocation with no concurrent overlapping requests — would need revisiting
+// if JiraClient were ever used for concurrent requests within one process.
+async function withTlsEnv(credentials, fn) {
+  if (!credentials.allowInsecureTls) return fn();
+  const prev = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  try {
+    return await fn();
+  } finally {
+    if (prev === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    else process.env.NODE_TLS_REJECT_UNAUTHORIZED = prev;
+  }
+}
+
 export class JiraClient {
   constructor(credentials) {
     this.credentials = credentials;
@@ -28,15 +45,17 @@ export class JiraClient {
   }
 
   async request(path, init = {}) {
-    const response = await fetch(`${this.credentials.baseUrl}${path}`, {
-      ...init,
-      headers: {
-        Authorization: this.authHeader(),
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        ...init.headers,
-      },
-    });
+    const response = await withTlsEnv(this.credentials, () =>
+      fetch(`${this.credentials.baseUrl}${path}`, {
+        ...init,
+        headers: {
+          Authorization: this.authHeader(),
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...init.headers,
+        },
+      })
+    );
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`Jira API error ${response.status}: ${body}`);
@@ -200,15 +219,17 @@ export class JiraClient {
     const buffer = await readFile(filePath);
     const form = new FormData();
     form.append("file", new Blob([buffer]), basename(filePath));
-    const response = await fetch(`${this.credentials.baseUrl}${this.apiBase}/issue/${key}/attachments`, {
-      method: "POST",
-      headers: {
-        Authorization: this.authHeader(),
-        "X-Atlassian-Token": "no-check",
-        Accept: "application/json",
-      },
-      body: form,
-    });
+    const response = await withTlsEnv(this.credentials, () =>
+      fetch(`${this.credentials.baseUrl}${this.apiBase}/issue/${key}/attachments`, {
+        method: "POST",
+        headers: {
+          Authorization: this.authHeader(),
+          "X-Atlassian-Token": "no-check",
+          Accept: "application/json",
+        },
+        body: form,
+      })
+    );
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`Jira API error ${response.status}: ${body}`);

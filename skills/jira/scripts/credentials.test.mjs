@@ -89,3 +89,47 @@ test("resolveCredentials with deploymentType=server still requires baseUrl and a
     for (const name of ENV_VAR_NAMES) delete process.env[name];
   }
 });
+
+test("resolveCredentials defaults allowInsecureTls to false when not specified", () => {
+  process.env.JIRA_BASE_URL = "https://example.atlassian.net";
+  process.env.JIRA_EMAIL = "me@example.com";
+  process.env.JIRA_API_TOKEN = "token123";
+  try {
+    const creds = resolveCredentials("/nonexistent-home");
+    assert.equal(creds.allowInsecureTls, false);
+  } finally {
+    for (const name of ENV_VAR_NAMES) delete process.env[name];
+  }
+});
+
+test("resolveCredentials coerces allowInsecureTls from env vars", () => {
+  process.env.JIRA_BASE_URL = "https://jira.company.com";
+  process.env.JIRA_API_TOKEN = "pat-token-123";
+  process.env.JIRA_DEPLOYMENT_TYPE = "server";
+  process.env.JIRA_ALLOW_INSECURE_TLS = "true";
+  try {
+    const creds = resolveCredentials("/nonexistent-home");
+    assert.equal(creds.allowInsecureTls, true);
+  } finally {
+    for (const name of ENV_VAR_NAMES) delete process.env[name];
+  }
+});
+
+test("resolveCredentials coerces allowInsecureTls from the config file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "jira-creds-"));
+  writeFileSync(
+    join(dir, ".jira-credentials.json"),
+    JSON.stringify({
+      baseUrl: "https://jira.company.com",
+      apiToken: "pat-token-123",
+      deploymentType: "server",
+      allowInsecureTls: true,
+    })
+  );
+  try {
+    const creds = resolveCredentials(dir);
+    assert.equal(creds.allowInsecureTls, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

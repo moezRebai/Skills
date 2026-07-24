@@ -238,6 +238,33 @@ test("server mode createIssue/getIssue round-trips a markdown description throug
   });
 });
 
+test("server mode updateIssue changes fields on an existing issue", async () => {
+  await withServerModeClient(async (client) => {
+    const created = await client.createIssue({ issueType: "Bug", summary: "Old summary" });
+    await client.updateIssue({ key: created.key, fields: { summary: "New summary" } });
+    const issue = await client.getIssue({ key: created.key });
+    assert.equal(issue.summary, "New summary");
+  });
+});
+
+test("server mode updateIssue converts a markdown description update to wiki markup", async () => {
+  await withServerModeClient(async (client) => {
+    const created = await client.createIssue({ issueType: "Bug", summary: "Needs a description" });
+    await client.updateIssue({ key: created.key, fields: { description: "Some **bold** text" } });
+    const issue = await client.getIssue({ key: created.key });
+    assert.equal(issue.description, "Some **bold** text");
+  });
+});
+
+test("server mode updateIssue throws a descriptive error for a missing issue", async () => {
+  await withServerModeClient(async (client) => {
+    await assert.rejects(
+      () => client.updateIssue({ key: "TEST-999", fields: { summary: "New summary" } }),
+      /404/
+    );
+  });
+});
+
 test("server mode searchIssues uses the classic /search endpoint, not /search/jql", async () => {
   await withServerModeClient(async (client) => {
     const epic = await client.createIssue({ issueType: "Epic", summary: "Epic parent" });
@@ -282,5 +309,78 @@ test("server mode listProjects/listIssueTypes/listFields use /rest/api/2", async
     assert.deepEqual(projects, [{ key: "TEST", name: "Test Project" }]);
     const types = await client.listIssueTypes();
     assert.ok(types.some((t) => t.name === "Epic"));
+  });
+});
+
+async function withHttpsServer(fn) {
+  const fake = createFakeJiraServer({ https: true });
+  const port = await fake.listen();
+  try {
+    await fn(port, fake);
+  } finally {
+    await fake.close();
+  }
+}
+
+test("whoami against a self-signed HTTPS server fails without allowInsecureTls", async () => {
+  await withHttpsServer(async (port) => {
+    const client = new JiraClient({
+      baseUrl: `https://127.0.0.1:${port}`,
+      email: "me@example.com",
+      apiToken: "token",
+      projectKey: "TEST",
+    });
+    await assert.rejects(() => client.whoami());
+  });
+});
+
+test("whoami against a self-signed HTTPS server succeeds with allowInsecureTls", async () => {
+  await withHttpsServer(async (port) => {
+    const client = new JiraClient({
+      baseUrl: `https://127.0.0.1:${port}`,
+      email: "me@example.com",
+      apiToken: "token",
+      projectKey: "TEST",
+      allowInsecureTls: true,
+    });
+    const me = await client.whoami();
+    assert.equal(me.accountId, "acc-me");
+  });
+});
+
+test("attachFile against a self-signed HTTPS server succeeds with allowInsecureTls", async () => {
+  await withHttpsServer(async (port) => {
+    const client = new JiraClient({
+      baseUrl: `https://127.0.0.1:${port}`,
+      email: "me@example.com",
+      apiToken: "token",
+      projectKey: "TEST",
+      allowInsecureTls: true,
+    });
+    const created = await client.createIssue({ issueType: "Bug", summary: "Needs an attachment" });
+    const dir = mkdtempSync(join(tmpdir(), "jira-attach-"));
+    const filePath = join(dir, "notes.md");
+    writeFileSync(filePath, "# Notes", "utf8");
+    try {
+      const result = await client.attachFile({ key: created.key, filePath });
+      assert.equal(result.filename, "notes.md");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+test("allowInsecureTls does not leak NODE_TLS_REJECT_UNAUTHORIZED after the request completes (regression check)", async () => {
+  await withHttpsServer(async (port) => {
+    const before = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    const client = new JiraClient({
+      baseUrl: `https://127.0.0.1:${port}`,
+      email: "me@example.com",
+      apiToken: "token",
+      projectKey: "TEST",
+      allowInsecureTls: true,
+    });
+    await client.whoami();
+    assert.equal(process.env.NODE_TLS_REJECT_UNAUTHORIZED, before);
   });
 });

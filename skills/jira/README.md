@@ -1,42 +1,83 @@
 # jira
 
-An agent skill for taking actions against a Jira Cloud instance — create, read, update, and
-search issues; transition status; comment; manage assignees; attach files; and discover
-projects/issue types/fields. A bundled, dependency-free Node.js script does the actual work;
-`SKILL.md` tells an agent when and how to use it.
+An agent skill for taking actions against a Jira Cloud or Server/Data Center instance —
+create, read, update, and search issues; transition status; comment; manage assignees;
+attach files; and discover projects/issue types/fields. A bundled, dependency-free Node.js
+script does the actual work; `SKILL.md` tells an agent when and how to use it.
 
-## Requirements
+## Prerequisites
 
 - Node.js 18+ (for native `fetch`).
-- A Jira Cloud account with an API token.
+- Jira credentials, depending on deployment type:
+  - **Cloud** — an Atlassian account email and an API token from
+    https://id.atlassian.com/manage-profile/security/api-tokens.
+  - **Server/Data Center** — a Personal Access Token generated from your Jira profile's
+    Personal Access Tokens page (not id.atlassian.com — that's Cloud-only). No email needed.
+- **Server/Data Center only, if the instance uses a self-signed or internal CA certificate**:
+  either the internal CA's certificate file (to set `NODE_EXTRA_CA_CERTS`, the proper fix) or
+  willingness to accept disabled TLS verification (`allowInsecureTls`, a last resort). See
+  "Self-signed or internal CA certificates" below.
 
 ## Setup
 
-Credentials resolve from environment variables first, then a config file:
+Credentials resolve from environment variables first, then a config file. Two deployment
+types are supported, selected by `deploymentType`/`JIRA_DEPLOYMENT_TYPE` (defaults to
+`"cloud"`):
 
 | Env var | Config file key | Example |
 |---|---|---|
-| `JIRA_BASE_URL` | `baseUrl` | `https://yourcompany.atlassian.net` |
-| `JIRA_EMAIL` | `email` | your Atlassian account email |
-| `JIRA_API_TOKEN` | `apiToken` | from https://id.atlassian.com/manage-profile/security/api-tokens |
+| `JIRA_BASE_URL` | `baseUrl` | `https://yourcompany.atlassian.net` (Cloud) or `https://jira.yourcompany.com` (Server/DC) |
+| `JIRA_EMAIL` | `email` | your Atlassian account email (Cloud only) |
+| `JIRA_API_TOKEN` | `apiToken` | Cloud API token, or Server/DC Personal Access Token |
 | `JIRA_PROJECT_KEY` | `projectKey` | optional default project (e.g. `PROJ`) |
+| `JIRA_DEPLOYMENT_TYPE` | `deploymentType` | `"cloud"` (default) or `"server"` |
+| `JIRA_ALLOW_INSECURE_TLS` | `allowInsecureTls` | optional, `true` to skip TLS verification (insecure, last resort) |
 
-Config file lives at `~/.jira-credentials.json`:
+Config file lives at `~/.jira-credentials.json`, e.g. for Cloud:
 
 ```json
 { "baseUrl": "https://yourcompany.atlassian.net", "email": "you@example.com", "apiToken": "...", "projectKey": "PROJ" }
 ```
 
+or for Server/Data Center:
+
+```json
+{ "baseUrl": "https://jira.yourcompany.com", "apiToken": "...", "deploymentType": "server", "projectKey": "PROJ" }
+```
+
 If credentials aren't set up yet, running any action fails fast with a clear
 `"Jira credentials not found"` error — the script itself never prompts interactively. An
-agent using this skill is expected to notice that error, ask you for the three required
-values, and write the config file for you.
+agent using this skill is expected to notice that error, ask you for the required values,
+and write the config file for you.
 
 Verify setup:
 
 ```bash
 echo '{}' | node scripts/jira.mjs whoami
 ```
+
+### Self-signed or internal CA certificates
+
+If `whoami` (or any action) fails with a TLS/certificate error against a Server/Data Center
+instance on an internal domain, its certificate is likely signed by an internal or
+self-signed CA that Node doesn't trust by default. Two options, in order of preference:
+
+- **Set `NODE_EXTRA_CA_CERTS`** to the internal CA's certificate file. This is a standard
+  Node.js environment variable, not specific to this skill, and Node only reads it once at
+  process startup — setting it in `~/.jira-credentials.json` would have no effect, since the
+  credentials file is read *after* the process has already started. It must exist as a real
+  environment variable *before* the skill's `node` process launches, which in practice means
+  setting it persistently at the OS level (a one-time setup step, not something to redo per
+  session):
+  - **Windows**: `setx NODE_EXTRA_CA_CERTS "C:\path\to\internal-ca.pem"`, then restart any
+    terminal/app (including Claude Code) that should pick it up — `setx` only affects new
+    processes started after it runs, not the current session.
+  - **macOS/Linux**: add `export NODE_EXTRA_CA_CERTS=/path/to/internal-ca.pem` to your shell
+    profile (`~/.zshrc`, `~/.bashrc`, etc.), then restart your terminal/app.
+  This properly verifies the certificate chain, unlike the option below.
+- **Set `allowInsecureTls`** (`JIRA_ALLOW_INSECURE_TLS=true`, or `"allowInsecureTls": true`
+  in `~/.jira-credentials.json`) only if you can't obtain the CA certificate. This disables
+  TLS certificate verification for this skill's requests — insecure, last resort.
 
 ## How to invoke it
 

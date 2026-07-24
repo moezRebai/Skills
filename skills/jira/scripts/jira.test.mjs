@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createFakeJiraServer } from "./fake-jira-server.mjs";
-import { run } from "./jira.mjs";
+import { run, describeError } from "./jira.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -100,4 +100,24 @@ test("CLI subprocess creates an issue against a live fake server end to end", as
   } finally {
     await fake.close();
   }
+});
+
+test("describeError adds a TLS hint for a self-signed cert error", () => {
+  const err = new Error("fetch failed");
+  err.cause = { code: "DEPTH_ZERO_SELF_SIGNED_CERT" };
+  const message = describeError(err);
+  assert.match(message, /TLS certificate error: DEPTH_ZERO_SELF_SIGNED_CERT/);
+  assert.match(message, /NODE_EXTRA_CA_CERTS/);
+  assert.match(message, /allowInsecureTls/);
+});
+
+test("describeError passes through non-TLS errors unchanged", () => {
+  const err = new Error("fetch failed");
+  err.cause = { code: "ECONNREFUSED" };
+  assert.equal(describeError(err), "fetch failed");
+});
+
+test("describeError passes through errors with no cause unchanged", () => {
+  const err = new Error("Unknown action \"delete-issue\"");
+  assert.equal(describeError(err), 'Unknown action "delete-issue"');
 });

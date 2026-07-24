@@ -27,6 +27,27 @@ async function readStdin() {
   return text ? JSON.parse(text) : {};
 }
 
+const TLS_ERROR_CODES = new Set([
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "DEPTH_ZERO_SELF_SIGNED_CERT",
+  "SELF_SIGNED_CERT_IN_CHAIN",
+  "CERT_HAS_EXPIRED",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+]);
+
+export function describeError(err) {
+  const code = err.cause?.code;
+  if (code && TLS_ERROR_CODES.has(code)) {
+    return (
+      `${err.message} (TLS certificate error: ${code}). If this Jira instance uses a self-signed ` +
+      `or internal CA certificate, either set NODE_EXTRA_CA_CERTS to that CA's certificate file before ` +
+      `running this skill (proper verification), or set allowInsecureTls (JIRA_ALLOW_INSECURE_TLS=true) ` +
+      `in your Jira credentials to skip verification (insecure, last resort). See SKILL.md's Setup section.`
+    );
+  }
+  return err.message;
+}
+
 export async function run(action, payload, credentials = resolveCredentials()) {
   const handler = ACTIONS[action];
   if (!handler) {
@@ -47,7 +68,7 @@ async function main() {
     const result = await run(action, payload);
     process.stdout.write(JSON.stringify(result ?? null) + "\n");
   } catch (err) {
-    process.stderr.write(JSON.stringify({ error: err.message }) + "\n");
+    process.stderr.write(JSON.stringify({ error: describeError(err) }) + "\n");
     process.exit(1);
   }
 }
