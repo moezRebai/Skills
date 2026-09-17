@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[System name] architecture</title>
+<style>
+:root{
+  --paper:#EDF1F4; --panel:#FFFFFF; --ink:#16293A; --muted:#566878; --rule:#C6D0D9;
+  --sys-fill:#DCEAF3; --sys-stroke:#2C5A78; --ext-fill:#E8ECEF; --ext-stroke:#6F7D89;
+  --store-fill:#E0EFEA; --store-stroke:#37705F; --person-fill:#F3EEE4; --person-stroke:#8A6A3C;
+  --zone:#8FA0AE; --new:#C2410C;
+  --flow-data:#0D7A72; --flow-control:#A5650E; --flow-ext:#6C4894; --flow-tele:#52722C; --risk:#A93A27;
+  --display:Bahnschrift,"DIN Alternate","DIN Next","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1D29; --panel:#152737; --ink:#E0E8EE; --muted:#9BAEBE; --rule:#2C4254;
+    --sys-fill:#1A3A52; --sys-stroke:#86B8DA; --ext-fill:#1F2E3B; --ext-stroke:#8C9AA6;
+    --store-fill:#173A33; --store-stroke:#7CC2AB; --person-fill:#33291B; --person-stroke:#D2A869;
+    --zone:#5F7385; --new:#F08A4B;
+    --flow-data:#3CC0B4; --flow-control:#E0A042; --flow-ext:#B08AD8; --flow-tele:#9CC061; --risk:#EE7B64;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1D29; --panel:#152737; --ink:#E0E8EE; --muted:#9BAEBE; --rule:#2C4254;
+  --sys-fill:#1A3A52; --sys-stroke:#86B8DA; --ext-fill:#1F2E3B; --ext-stroke:#8C9AA6;
+  --store-fill:#173A33; --store-stroke:#7CC2AB; --person-fill:#33291B; --person-stroke:#D2A869;
+  --zone:#5F7385; --new:#F08A4B;
+  --flow-data:#3CC0B4; --flow-control:#E0A042; --flow-ext:#B08AD8; --flow-tele:#9CC061; --risk:#EE7B64;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--body)}
+a{color:inherit}
+.banner{background:var(--ink);color:var(--paper);font-size:.85rem;padding:.35rem 1.25rem;display:flex;gap:1.5rem;flex-wrap:wrap}
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;align-self:start;height:100vh;padding:1.5rem 1rem;border-right:1px solid var(--rule);overflow:auto}
+.rail .name{font:600 1.15rem/1.2 var(--display);letter-spacing:.01em;margin:0 0 1.25rem}
+.rail ol{list-style:none;margin:0;padding:0}
+.rail a{display:block;padding:.35rem .6rem;border-left:3px solid transparent;text-decoration:none;color:var(--muted)}
+.rail a:hover{color:var(--ink)}
+.rail a[aria-current="true"]{color:var(--ink);border-left-color:var(--flow-data);font-weight:600}
+main{padding:2rem clamp(1rem,4vw,3.5rem) 4rem;max-width:1180px}
+section{padding:2.25rem 0;border-bottom:1px solid var(--rule);scroll-margin-top:1rem}
+section:last-of-type{border-bottom:0}
+h1{font:600 clamp(2rem,4.2vw,3rem)/1.05 var(--display);margin:.25rem 0 .75rem;letter-spacing:-.01em}
+h2{font:600 1.6rem/1.2 var(--display);margin:0 0 .6rem}
+h3{font:600 1.1rem/1.3 var(--display);margin:1.5rem 0 .5rem}
+p,li{max-width:72ch}
+.lede{font-size:1.15rem;color:var(--muted);max-width:60ch;margin:0 0 1.25rem}
+.figures{display:flex;flex-wrap:wrap;gap:0;margin:1rem 0 1.5rem;border-top:2px solid var(--ink);border-bottom:1px solid var(--rule)}
+.figures div{padding:.7rem 1.5rem .7rem 0;margin-right:1.5rem}
+.figures dt{font-size:.85rem;color:var(--muted)}
+.figures dd{margin:0;font:600 1.35rem/1.2 var(--display)}
+.canvas{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:.75rem;overflow-x:auto}
+.canvas svg{display:block;width:100%;min-width:760px;height:auto}
+.hint{font-size:.85rem;color:var(--muted);margin:.5rem 0 0}
+.legend{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;margin:.75rem 0 0;padding:0;list-style:none;font-size:.9rem}
+.legend li{display:flex;align-items:center;gap:.5rem}
+.legend svg{width:44px;height:12px}
+svg text{fill:var(--ink);font-family:var(--body);font-size:14px}
+svg .t-name{font-weight:600}
+svg .t-sub{font-size:12px;fill:var(--muted)}
+svg .t-zone{font-family:var(--display);font-size:13px;fill:var(--muted)}
+svg .t-flow{font-size:11.5px;fill:var(--muted)}
+.node-system{fill:var(--sys-fill);stroke:var(--sys-stroke);stroke-width:1.5}
+.node-ext{fill:var(--ext-fill);stroke:var(--ext-stroke);stroke-width:1.2}
+.node-store{fill:var(--store-fill);stroke:var(--store-stroke);stroke-width:1.5}
+.node-person{fill:var(--person-fill);stroke:var(--person-stroke);stroke-width:1.2}
+.node-new{stroke:var(--new);stroke-width:2.5}
+.zone{fill:none;stroke:var(--zone);stroke-width:1.2;stroke-dasharray:6 5}
+.flow{fill:none;stroke-width:2}
+.flow-data{stroke:var(--flow-data)}
+.flow-failover{stroke:var(--flow-data);stroke-dasharray:4 4}
+.flow-control{stroke:var(--flow-control);stroke-dasharray:10 5}
+.flow-ext{stroke:var(--flow-ext)}
+.flow-tele{stroke:var(--flow-tele);stroke-dasharray:2 4}
+.ah-data{fill:var(--flow-data)} .ah-control{fill:var(--flow-control)} .ah-ext{fill:var(--flow-ext)} .ah-tele{fill:var(--flow-tele)}
+[data-id]{cursor:pointer}
+[data-id]:hover>.node-system,[data-id]:hover>.node-ext,[data-id]:hover>.node-store,[data-id]:hover>.node-person{stroke-width:2.6}
+[data-id]:focus{outline:none}
+[data-id]:focus-visible>rect,[data-id]:focus-visible>path{stroke:var(--new);stroke-width:3}
+button[data-id]{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:left}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+.table-wrap{overflow-x:auto}
+th,td{text-align:left;vertical-align:top;padding:.5rem .75rem .5rem 0;border-bottom:1px solid var(--rule)}
+th{font-weight:600;color:var(--muted);font-size:.85rem}
+.status{font-size:.85rem;white-space:nowrap}
+.superseded td{color:var(--muted)} .superseded .adr-title{text-decoration:line-through}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;position:relative;padding:.45rem 0 .45rem 2.4rem;border-left:2px solid var(--rule);margin-left:.9rem}
+.steps li::before{content:counter(s);position:absolute;left:-.95rem;top:.35rem;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--panel);border:2px solid var(--flow-data);display:grid;place-items:center;font:600 .85rem var(--display)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem 2.5rem}
+.timeline{display:grid;grid-template-columns:minmax(220px,300px) repeat(var(--weeks),minmax(12px,1fr));gap:.6rem 0;align-items:center;min-width:760px}
+.timeline .label{font-weight:600;padding-right:1rem;font-size:.92rem;line-height:1.3}
+.timeline .label span{display:block;font-weight:400;font-size:.8rem;color:var(--muted)}
+.timeline .bar{height:1.6rem;border-radius:4px;background:var(--sys-fill);border:1.5px solid var(--sys-stroke);font-size:.78rem;display:flex;align-items:center;padding:0 .4rem;white-space:nowrap;overflow:hidden}
+.timeline .tick{font-size:.78rem;color:var(--muted);border-left:1px solid var(--rule);padding-left:.25rem}
+.risk{border-left:4px solid var(--risk);padding:.1rem 0 .1rem .9rem;margin:.75rem 0}
+.risk strong{display:block}
+.pill{display:inline-block;font-size:.8rem;padding:.05rem .5rem;border-radius:999px;border:1px solid var(--rule);color:var(--muted)}
+.pill.high{border-color:var(--risk);color:var(--risk)}
+#panel{position:fixed;top:0;right:0;height:100vh;width:min(430px,100%);background:var(--panel);border-left:1px solid var(--rule);box-shadow:-12px 0 30px rgba(10,25,40,.18);padding:1.5rem 1.5rem 2rem;overflow:auto;transform:translateX(100%);transition:transform .22s ease;z-index:10}
+#panel.open{transform:none}
+#panel h2{font-size:1.35rem;margin-right:2.5rem}
+#panel dl{display:grid;grid-template-columns:max-content 1fr;gap:.35rem 1rem;margin:1rem 0}
+#panel dt{color:var(--muted);font-size:.9rem}
+#panel dd{margin:0}
+#panel .refs{font-size:.9rem;color:var(--muted)}
+#panel-close{position:absolute;top:1rem;right:1rem;width:2.2rem;height:2.2rem;border-radius:50%;border:1px solid var(--rule);background:var(--paper);color:var(--ink);font-size:1.2rem;cursor:pointer}
+.theme-toggle{margin-top:1.5rem;font:inherit;font-size:.85rem;background:none;border:1px solid var(--rule);border-radius:6px;padding:.3rem .6rem;color:var(--muted);cursor:pointer}
+:focus-visible{outline:3px solid var(--flow-data);outline-offset:2px}
+@media (max-width:860px){
+  .layout{grid-template-columns:1fr}
+  .rail{position:sticky;height:auto;border-right:0;border-bottom:1px solid var(--rule);padding:.6rem 1rem;background:var(--paper);z-index:5}
+  .rail .name,.theme-toggle{display:none}
+  .rail ol{display:flex;gap:.25rem;overflow-x:auto}
+  .rail a{border-left:0;border-bottom:3px solid transparent;white-space:nowrap}
+  .rail a[aria-current="true"]{border-bottom-color:var(--flow-data)}
+}
+@media (prefers-reduced-motion:reduce){#panel{transition:none}html{scroll-behavior:auto}}
+@media print{
+  .rail,#panel,.hint,.theme-toggle{display:none!important}
+  .layout{display:block} body{background:#fff}
+  section{break-inside:avoid-page}
+}
+</style>
+</head>
+<body>
+<div class="banner" role="note"><span>Internal – Confidential</span><span>[Mode], target architecture</span><span>[Status and date]</span></div>
+<div class="layout">
+<nav class="rail" aria-label="Sections">
+<p class="name">[System name] architecture</p>
+<ol><li><a href="#summary">Summary</a></li><li><a href="#approach">Why this shape</a></li><li><a href="#context">Context</a></li><li><a href="#deployment">Deployment</a></li><li><a href="#flows">Key flows</a></li><li><a href="#decisions">Decisions</a></li><li><a href="#quality">Quality targets</a></li><li><a href="#security">Security</a></li><li><a href="#operations">Operations</a></li><li><a href="#roadmap">Roadmap</a></li><li><a href="#risks">Risks and open items</a></li></ol>
+<button class="theme-toggle" type="button">Switch light or dark</button>
+</nav>
+<main>
+
+<!-- Demo pack template. Follow references/demo-pack.md.
+     Replace every [bracketed] placeholder with approved content, drop sections that do not apply,
+     keep every data-id in the diagrams matched by an entry in the details JSON at the bottom,
+     and never add external scripts, fonts, images or network calls. -->
+
+<section id="summary" aria-labelledby="h-summary">
+<h1 id="h-summary">[System name]: [what it does in a few words]</h1>
+<p class="lede">[One or two sentences a non-specialist can follow: what the system does, for whom.]</p>
+<dl class="figures">
+<div><dt>[Key target]</dt><dd>[value]</dd></div>
+<div><dt>[Key target]</dt><dd>[value]</dd></div>
+<div><dt>[Key target]</dt><dd>[value]</dd></div>
+</dl>
+<!-- Main visual: the container diagram. Helpers in the skill's guide describe box sizes, colors and routing. -->
+<div class="canvas"><svg viewBox="0 0 820 240" role="img" aria-labelledby="t-1284817553225237514"><title id="t-1284817553225237514">[Diagram title for screen readers]</title><defs>
+  <marker id="ah-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-data" d="M0 0L10 5L0 10z"/></marker>
+  <marker id="ah-control" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-control" d="M0 0L10 5L0 10z"/></marker>
+  <marker id="ah-ext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-ext" d="M0 0L10 5L0 10z"/></marker>
+  <marker id="ah-tele" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-tele" d="M0 0L10 5L0 10z"/></marker>
+</defs><rect class="zone" x="260" y="20" width="300" height="140" rx="10"/><text class="t-zone" x="272" y="38">[Trust boundary or site]</text><path class="flow flow-data" d="M200 90 H300" marker-end="url(#ah-data)"/><text class="t-flow" x="250" y="80" text-anchor="middle">[label]</text><path class="flow flow-data" d="M500 90 H620" marker-end="url(#ah-data)"/><path class="flow flow-tele" d="M400 118 V200 H620" marker-end="url(#ah-tele)"/><g data-id="user" tabindex="0" role="button" aria-label="[Users]"><rect class="node-person" x="20" y="62" width="180" height="56" rx="28.0"/><text class="t-name" x="110.0" y="87.0" text-anchor="middle">[Users]</text><text class="t-sub" x="110.0" y="104.0" text-anchor="middle">[What they do]</text></g><g data-id="app" tabindex="0" role="button" aria-label="[Our component]"><rect class="node-system" x="300" y="62" width="200" height="56" rx="6"/><text class="t-name" x="400.0" y="87.0" text-anchor="middle">[Our component]</text><text class="t-sub" x="400.0" y="104.0" text-anchor="middle">[Technology]</text></g><g data-id="store" tabindex="0" role="button" aria-label="[Data store]"><path class="node-store" d="M620 70 a90.0 8 0 0 1 180 0 V110 a90.0 8 0 0 1 -180 0 Z"/><path class="node-store" d="M620 70 a90.0 8 0 0 0 180 0"/><text class="t-name" x="710.0" y="92.0" text-anchor="middle">[Data store]</text><text class="t-sub" x="710.0" y="109.0" text-anchor="middle">[Technology]</text></g><g data-id="ext" tabindex="0" role="button" aria-label="[External system]"><rect class="node-ext" x="620" y="176" width="180" height="48" rx="6"/><text class="t-name" x="710.0" y="205.0" text-anchor="middle">[External system]</text></g></svg></div>
+<ul class="legend" aria-label="Legend">
+  <li><svg viewBox="0 0 44 12" aria-hidden="true"><path class="flow flow-data" d="M2 6H42"/></svg>Data and requests</li>
+  <li><svg viewBox="0 0 44 12" aria-hidden="true"><path class="flow flow-failover" d="M2 6H42"/></svg>Standby or failover path</li>
+  <li><svg viewBox="0 0 44 12" aria-hidden="true"><path class="flow flow-control" d="M2 6H42"/></svg>Control and coordination</li>
+  <li><svg viewBox="0 0 44 12" aria-hidden="true"><path class="flow flow-ext" d="M2 6H42"/></svg>External access</li>
+  <li><svg viewBox="0 0 44 12" aria-hidden="true"><path class="flow flow-tele" d="M2 6H42"/></svg>Telemetry</li>
+</ul>
+<p class="hint">Select any box for details. Press Escape to close.</p>
+</section>
+
+<section id="approach" aria-labelledby="h-approach">
+<h2 id="h-approach">Why this shape</h2>
+<p>[The chosen option in two sentences, and why.]</p>
+<div class="two">
+<div><h3>What we gain</h3><ul><li>[Benefit tied to a ranked driver]</li></ul></div>
+<div><h3>What we accept</h3><ul><li>[Trade-off from the options document]</li></ul></div>
+</div>
+</section>
+
+<section id="context" aria-labelledby="h-context">
+<h2 id="h-context">Context</h2>
+<p>[Users and external systems around the system. Add a context diagram in a .canvas block.]</p>
+</section>
+
+<section id="deployment" aria-labelledby="h-deployment">
+<h2 id="h-deployment">Deployment</h2>
+<p>[Sites, hosts or clusters, load balancing, data replication. Add a deployment diagram.]</p>
+<h3>Release path</h3>
+<p>[Build, package, deploy and release tools, environments, rollout strategy.]</p>
+</section>
+
+<section id="flows" aria-labelledby="h-flows">
+<h2 id="h-flows">Key flows</h2>
+<div class="two">
+<div><h3>[Flow name]</h3><ol class="steps"><li>[Step]</li><li>[Step]</li></ol></div>
+<div><h3>[Failure or recovery flow]</h3><ol class="steps"><li>[Step]</li><li>[Step]</li></ol></div>
+</div>
+</section>
+
+<section id="decisions" aria-labelledby="h-decisions">
+<h2 id="h-decisions">Decisions</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>ADR</th><th>Decision</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>ADR-0001</td><td class="adr-title">[Title]</td><td class="status">Accepted</td></tr>
+<tr class="superseded"><td>ADR-0002</td><td class="adr-title">[Title]</td><td class="status">Superseded by ADR-0003</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section id="quality" aria-labelledby="h-quality">
+<h2 id="h-quality">Quality targets and how they are measured</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>What users feel</th><th>Target</th><th>Measured by</th></tr></thead>
+<tbody><tr><td>[Plain-language outcome]</td><td>[SLO or NFR]</td><td>[SLI or test]</td></tr></tbody>
+</table></div>
+</section>
+
+<section id="security" aria-labelledby="h-security">
+<h2 id="h-security">Security</h2>
+<ul><li><strong>[Trust boundary or control]</strong> [one sentence]</li></ul>
+</section>
+
+<section id="operations" aria-labelledby="h-operations">
+<h2 id="h-operations">Operations</h2>
+<p>[Who watches when, and who is on call.]</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Severity</th><th>Where it goes</th><th>How a person is reached</th></tr></thead>
+<tbody><tr><td>[Critical]</td><td>[Channel]</td><td>[Paging or escalation]</td></tr></tbody>
+</table></div>
+</section>
+
+<section id="roadmap" aria-labelledby="h-roadmap">
+<h2 id="h-roadmap">Roadmap</h2>
+<p>[Start date, and what drives the critical path.]</p>
+<!-- One column per week (set --weeks). grid-column uses week number + 1 because column 1 holds the labels. -->
+<div class="canvas"><div class="timeline" style="--weeks:12">
+<div></div><div class="tick" style="grid-column:2 / 6">[Month]</div><div class="tick" style="grid-column:6 / 10">[Month]</div><div class="tick" style="grid-column:10 / 14">[Month]</div>
+<div class="label" style="grid-column:1">[Phase 1]<span>[Scope and proof point]</span></div><div class="bar" style="grid-column:2 / 6">4 wk</div>
+<div class="label" style="grid-column:1">[Phase 2]<span>[Scope and proof point]</span></div><div class="bar" style="grid-column:6 / 14">8 wk</div>
+</div></div>
+</section>
+
+<section id="risks" aria-labelledby="h-risks">
+<h2 id="h-risks">Risks and open items</h2>
+<div class="risk"><strong>[Risk]</strong>[Impact and mitigation.] <span class="pill high">High, [A-n]</span></div>
+<div class="risk"><strong>[Risk]</strong>[Impact and mitigation.] <span class="pill">[R-n]</span></div>
+</section>
+
+</main>
+</div>
+<aside id="panel" hidden aria-live="polite" aria-label="Details">
+<button id="panel-close" type="button" aria-label="Close details">×</button>
+<div id="panel-body"></div>
+</aside>
+<script type="application/json" id="details">{"user": {"title": "[Users]", "summary": "[One or two plain sentences.]", "facts": [["[Label]", "[Value]"]], "refs": ["[04 §2]"]}, "app": {"title": "[Our component]", "summary": "[Responsibility in plain words.]", "facts": [["Technology", "[Language, runtime, framework]"], ["Hosting", "[Target]"]], "refs": ["[ADR-000N]"]}, "store": {"title": "[Data store]", "summary": "[What it holds and why.]", "refs": ["[04 §8]"]}, "ext": {"title": "[External system]", "summary": "[What we exchange with it.]", "refs": ["[04 §9]"]}}</script>
+<script>
+(function(){
+  var data = {};
+  try { data = JSON.parse(document.getElementById('details').textContent); } catch (e) { console.error('Details data is not valid JSON', e); }
+  var panel = document.getElementById('panel');
+  var closeBtn = document.getElementById('panel-close');
+  var lastFocus = null;
+  function el(tag, text, cls){ var n = document.createElement(tag); if (text) n.textContent = text; if (cls) n.className = cls; return n; }
+  function openPanel(id, source){
+    var d = data[id]; if (!d) { console.warn('No details for', id); return; }
+    var body = document.getElementById('panel-body');
+    body.replaceChildren();
+    body.appendChild(el('h2', d.title));
+    if (d.summary) body.appendChild(el('p', d.summary));
+    if (d.facts && d.facts.length){
+      var dl = el('dl');
+      d.facts.forEach(function(f){ dl.appendChild(el('dt', f[0])); dl.appendChild(el('dd', f[1])); });
+      body.appendChild(dl);
+    }
+    if (d.refs && d.refs.length) body.appendChild(el('p', 'Source: ' + d.refs.join(', '), 'refs'));
+    lastFocus = source;
+    panel.hidden = false;
+    requestAnimationFrame(function(){ panel.classList.add('open'); closeBtn.focus(); });
+  }
+  function closePanel(){
+    if (panel.hidden) return;
+    panel.classList.remove('open');
+    setTimeout(function(){ panel.hidden = true; }, 230);
+    if (lastFocus) lastFocus.focus();
+  }
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('[data-id]');
+    if (t) { openPanel(t.getAttribute('data-id'), t); return; }
+    if (!panel.hidden && !panel.contains(e.target)) closePanel();
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') { closePanel(); return; }
+    var t = e.target;
+    if ((e.key === 'Enter' || e.key === ' ') && t.matches && t.matches('svg [data-id]')) { e.preventDefault(); openPanel(t.getAttribute('data-id'), t); }
+  });
+  closeBtn.addEventListener('click', closePanel);
+  // Section highlight in the rail
+  var links = Array.prototype.slice.call(document.querySelectorAll('.rail a'));
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting) links.forEach(function(a){ a.setAttribute('aria-current', a.getAttribute('href') === '#' + en.target.id ? 'true' : 'false'); });
+      });
+    }, { rootMargin: '-35% 0px -60% 0px' });
+    document.querySelectorAll('main section[id]').forEach(function(s){ io.observe(s); });
+  }
+  // Theme toggle
+  var toggle = document.querySelector('.theme-toggle');
+  if (toggle) toggle.addEventListener('click', function(){
+    var root = document.documentElement;
+    var dark = root.getAttribute('data-theme') ? root.getAttribute('data-theme') === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+  });
+})();
+</script>
+</body>
+</html>
