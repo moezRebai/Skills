@@ -57,14 +57,14 @@ Draw diagrams as inline SVG written by hand. No diagram libraries, no external s
 - **Flows as colored lines** with arrowheads from the template's `marker` definitions. Use one color per kind of flow and show a legend: data/prices, control/admin, external/security, telemetry. Label an arrow only when the label adds meaning, and keep labels short.
 - **Size limits:** about 12 boxes per diagram. Split a busy diagram into two rather than shrinking text.
 - **Routing:** prefer straight or right-angled paths (`path` with `H` and `V` commands); avoid lines crossing boxes.
-- **Every clickable element** gets `data-id` matching an entry in the details data (section 5), plus `tabindex="0"`, `role="button"` and an `aria-label`.
+- **Every clickable element** gets `data-id` matching an entry in the details block after its diagram (section 5), plus `tabindex="0"`, `role="button"` and an `aria-label`.
 - **Dark mode:** use only the CSS classes and variables from the template, never hard-coded colors in the SVG.
 
 ## 5. Interactivity and accessibility
 
 The template already contains the small inline script. It provides:
 - **Section navigation** in the side rail, with the current section highlighted.
-- **A details panel:** clicking or pressing Enter on any element with `data-id` opens a side panel filled from the JSON block `<script type="application/json" id="details">`. Each entry has `title`, `summary`, optional `facts` (label/value pairs) and optional `refs` (document or ADR names).
+- **A details panel:** clicking or pressing Enter on any element with `data-id` opens a side panel filled from the JSON blocks `<script type="application/json" class="details-data">` (one per diagram; the script merges them). Each entry has `title`, `summary`, optional `facts` (label/value pairs) and optional `refs` (document or ADR names).
 - **Escape** closes the panel; focus returns to the element.
 - **Print:** all sections print in order, the panel is hidden.
 
@@ -72,9 +72,14 @@ Keep it that way: no network requests, no storage, no external fonts or scripts.
 
 ## 6. Build and check
 
-1. Copy the template to the output path and fill it section by section.
-2. Fill the details JSON for every `data-id` used in the diagrams, and check that none is missing.
-3. Check that the HTML is well formed and the JSON block parses.
-4. Open the file in a browser if your environment allows; otherwise re-read each SVG and check coordinates so boxes do not overlap and text fits.
-5. Re-check hygiene: classification banner, no secrets or host names, names match the documents.
-6. Gate: show the user where the file is and ask **Approve**, **Revise**, or **Back to an earlier phase**. Tell them it can be opened directly from disk, and that sharing it follows the same classification as the documents.
+The page is built in small steps. Writing it in one go means tens of thousands of output tokens in a single request, which is slow, can exceed the agent's output limit, and times out behind corporate proxies and gateways.
+
+1. **Copy, don't retype.** Copy the template file to the output path with a file operation (for example a shell copy command). Its styles and script are finished; never regenerate them.
+2. **One section per edit.** Replace the content between a section's markers (`<!-- SECTION:name -->` and `<!-- /SECTION:name -->`) in a single edit. Drop unused sections by deleting their block. Keep each edit to roughly 150 lines or fewer; split a large section into two edits.
+3. **One diagram per edit.** Write each SVG in its own edit, together with the details block that sits right after it (`<script type="application/json" class="details-data">`). Every `data-id` in that diagram must have an entry in that block. The page merges all details blocks, so each section stays self-contained.
+4. **Read only what the section needs.** Use the review document, the ADR index and the specific sections listed in the page-structure table, not the whole document set at once.
+5. **Track progress.** After each edit, note the finished section in the "Demo pack" line of `_session.md`, so an interrupted session resumes at the next section instead of starting over.
+6. **Keep reasoning short.** The design is decided; this phase lays it out. Plan diagram coordinates once on the 20-unit grid, then write.
+7. **Check.** Confirm the HTML is well formed, each details block parses as JSON, and every `data-id` has an entry. Open the file in a browser if your environment allows; otherwise re-read each SVG's coordinates so boxes don't overlap and text fits.
+8. **Hygiene.** Classification banner present, no secrets or host names, names match the documents.
+9. **Gate:** show the user where the file is and ask **Approve**, **Revise**, or **Back to an earlier phase**. Tell them it opens directly from disk and follows the same classification as the documents.
