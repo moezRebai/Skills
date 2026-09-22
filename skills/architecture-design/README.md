@@ -28,7 +28,16 @@ The last phase writes `docs/architecture/architecture-overview.html`: one self-c
 
 ## Recommended model
 
-Claude Opus 5 or higher, high effort, selected for the whole session (for example with `/model` in Claude Code). The skill does not set a model because a skill-level model override does not persist across a multi-turn interview and non-standard frontmatter breaks portability. The skill text contains the word "ultrathink", which asks Claude Code for deeper reasoning when the skill runs; other agents treat it as plain text.
+Claude Opus 5 or higher, high effort, selected for the whole session (for example with `/model` in Claude Code). Older or smaller models work too; the skill writes every document in small edits so no single request runs long. The skill does not set a model because a skill-level model override does not persist across a multi-turn interview and non-standard frontmatter breaks portability.
+
+For deeper reasoning at the options and review phases, type `ultrathink` in your own message at those points (Claude Code). It is not in the skill text, because there it would apply to every phase and slow down simple ones.
+
+## Timeouts and output limits
+
+If requests time out or stop with an output-limit error, especially behind a corporate proxy or gateway:
+- make sure you have the latest version of this skill (it writes in small edits);
+- in Claude Code, `CLAUDE_CODE_MAX_OUTPUT_TOKENS` raises the per-response output limit and `API_TIMEOUT_MS` the client request timeout;
+- a gateway's own timeout can only be changed by its owners; small edits keep each request well under it.
 
 ## Permissions
 
