@@ -142,9 +142,10 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 
 <!-- Demo pack template. Follow references/demo-pack.md.
      Replace every [bracketed] placeholder with approved content, drop sections that do not apply,
-     keep every data-id in the diagrams matched by an entry in the details JSON at the bottom,
+     copy this file (never retype it) and fill one SECTION block per edit; keep every data-id in a diagram matched by an entry in the details-data block right after it,
      and never add external scripts, fonts, images or network calls. -->
 
+<!-- SECTION:summary -->
 <section id="summary" aria-labelledby="h-summary">
 <h1 id="h-summary">[System name]: [what it does in a few words]</h1>
 <p class="lede">[One or two sentences a non-specialist can follow: what the system does, for whom.]</p>
@@ -154,12 +155,13 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 <div><dt>[Key target]</dt><dd>[value]</dd></div>
 </dl>
 <!-- Main visual: the container diagram. Helpers in the skill's guide describe box sizes, colors and routing. -->
-<div class="canvas"><svg viewBox="0 0 820 240" role="img" aria-labelledby="t-1284817553225237514"><title id="t-1284817553225237514">[Diagram title for screen readers]</title><defs>
+<div class="canvas"><svg viewBox="0 0 820 240" role="img" aria-labelledby="t-7064459241302454176"><title id="t-7064459241302454176">[Diagram title for screen readers]</title><defs>
   <marker id="ah-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-data" d="M0 0L10 5L0 10z"/></marker>
   <marker id="ah-control" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-control" d="M0 0L10 5L0 10z"/></marker>
   <marker id="ah-ext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-ext" d="M0 0L10 5L0 10z"/></marker>
   <marker id="ah-tele" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-tele" d="M0 0L10 5L0 10z"/></marker>
 </defs><rect class="zone" x="260" y="20" width="300" height="140" rx="10"/><text class="t-zone" x="272" y="38">[Trust boundary or site]</text><path class="flow flow-data" d="M200 90 H300" marker-end="url(#ah-data)"/><text class="t-flow" x="250" y="80" text-anchor="middle">[label]</text><path class="flow flow-data" d="M500 90 H620" marker-end="url(#ah-data)"/><path class="flow flow-tele" d="M400 118 V200 H620" marker-end="url(#ah-tele)"/><g data-id="user" tabindex="0" role="button" aria-label="[Users]"><rect class="node-person" x="20" y="62" width="180" height="56" rx="28.0"/><text class="t-name" x="110.0" y="87.0" text-anchor="middle">[Users]</text><text class="t-sub" x="110.0" y="104.0" text-anchor="middle">[What they do]</text></g><g data-id="app" tabindex="0" role="button" aria-label="[Our component]"><rect class="node-system" x="300" y="62" width="200" height="56" rx="6"/><text class="t-name" x="400.0" y="87.0" text-anchor="middle">[Our component]</text><text class="t-sub" x="400.0" y="104.0" text-anchor="middle">[Technology]</text></g><g data-id="store" tabindex="0" role="button" aria-label="[Data store]"><path class="node-store" d="M620 70 a90.0 8 0 0 1 180 0 V110 a90.0 8 0 0 1 -180 0 Z"/><path class="node-store" d="M620 70 a90.0 8 0 0 0 180 0"/><text class="t-name" x="710.0" y="92.0" text-anchor="middle">[Data store]</text><text class="t-sub" x="710.0" y="109.0" text-anchor="middle">[Technology]</text></g><g data-id="ext" tabindex="0" role="button" aria-label="[External system]"><rect class="node-ext" x="620" y="176" width="180" height="48" rx="6"/><text class="t-name" x="710.0" y="205.0" text-anchor="middle">[External system]</text></g></svg></div>
+<script type="application/json" class="details-data">{"user": {"title": "[Users]", "summary": "[One or two plain sentences.]", "facts": [["[Label]", "[Value]"]], "refs": ["[04 §2]"]}, "app": {"title": "[Our component]", "summary": "[Responsibility in plain words.]", "facts": [["Technology", "[Language, runtime, framework]"], ["Hosting", "[Target]"]], "refs": ["[ADR-000N]"]}, "store": {"title": "[Data store]", "summary": "[What it holds and why.]", "refs": ["[04 §8]"]}, "ext": {"title": "[External system]", "summary": "[What we exchange with it.]", "refs": ["[04 §9]"]}}</script>
 <ul class="legend" aria-label="Legend">
   <li><svg viewBox="0 0 44 12" aria-hidden="true"><path class="flow flow-data" d="M2 6H42"/></svg>Data and requests</li>
   <li><svg viewBox="0 0 44 12" aria-hidden="true"><path class="flow flow-failover" d="M2 6H42"/></svg>Standby or failover path</li>
@@ -169,7 +171,9 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 </ul>
 <p class="hint">Select any box for details. Press Escape to close.</p>
 </section>
+<!-- /SECTION:summary -->
 
+<!-- SECTION:approach -->
 <section id="approach" aria-labelledby="h-approach">
 <h2 id="h-approach">Why this shape</h2>
 <p>[The chosen option in two sentences, and why.]</p>
@@ -178,19 +182,25 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 <div><h3>What we accept</h3><ul><li>[Trade-off from the options document]</li></ul></div>
 </div>
 </section>
+<!-- /SECTION:approach -->
 
+<!-- SECTION:context -->
 <section id="context" aria-labelledby="h-context">
 <h2 id="h-context">Context</h2>
 <p>[Users and external systems around the system. Add a context diagram in a .canvas block.]</p>
 </section>
+<!-- /SECTION:context -->
 
+<!-- SECTION:deployment -->
 <section id="deployment" aria-labelledby="h-deployment">
 <h2 id="h-deployment">Deployment</h2>
 <p>[Sites, hosts or clusters, load balancing, data replication. Add a deployment diagram.]</p>
 <h3>Release path</h3>
 <p>[Build, package, deploy and release tools, environments, rollout strategy.]</p>
 </section>
+<!-- /SECTION:deployment -->
 
+<!-- SECTION:flows -->
 <section id="flows" aria-labelledby="h-flows">
 <h2 id="h-flows">Key flows</h2>
 <div class="two">
@@ -198,7 +208,9 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 <div><h3>[Failure or recovery flow]</h3><ol class="steps"><li>[Step]</li><li>[Step]</li></ol></div>
 </div>
 </section>
+<!-- /SECTION:flows -->
 
+<!-- SECTION:decisions -->
 <section id="decisions" aria-labelledby="h-decisions">
 <h2 id="h-decisions">Decisions</h2>
 <div class="table-wrap"><table>
@@ -209,7 +221,9 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 </tbody>
 </table></div>
 </section>
+<!-- /SECTION:decisions -->
 
+<!-- SECTION:quality -->
 <section id="quality" aria-labelledby="h-quality">
 <h2 id="h-quality">Quality targets and how they are measured</h2>
 <div class="table-wrap"><table>
@@ -217,12 +231,16 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 <tbody><tr><td>[Plain-language outcome]</td><td>[SLO or NFR]</td><td>[SLI or test]</td></tr></tbody>
 </table></div>
 </section>
+<!-- /SECTION:quality -->
 
+<!-- SECTION:security -->
 <section id="security" aria-labelledby="h-security">
 <h2 id="h-security">Security</h2>
 <ul><li><strong>[Trust boundary or control]</strong> [one sentence]</li></ul>
 </section>
+<!-- /SECTION:security -->
 
+<!-- SECTION:operations -->
 <section id="operations" aria-labelledby="h-operations">
 <h2 id="h-operations">Operations</h2>
 <p>[Who watches when, and who is on call.]</p>
@@ -231,7 +249,9 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 <tbody><tr><td>[Critical]</td><td>[Channel]</td><td>[Paging or escalation]</td></tr></tbody>
 </table></div>
 </section>
+<!-- /SECTION:operations -->
 
+<!-- SECTION:roadmap -->
 <section id="roadmap" aria-labelledby="h-roadmap">
 <h2 id="h-roadmap">Roadmap</h2>
 <p>[Start date, and what drives the critical path.]</p>
@@ -242,12 +262,15 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 <div class="label" style="grid-column:1">[Phase 2]<span>[Scope and proof point]</span></div><div class="bar" style="grid-column:6 / 14">8 wk</div>
 </div></div>
 </section>
+<!-- /SECTION:roadmap -->
 
+<!-- SECTION:risks -->
 <section id="risks" aria-labelledby="h-risks">
 <h2 id="h-risks">Risks and open items</h2>
 <div class="risk"><strong>[Risk]</strong>[Impact and mitigation.] <span class="pill high">High, [A-n]</span></div>
 <div class="risk"><strong>[Risk]</strong>[Impact and mitigation.] <span class="pill">[R-n]</span></div>
 </section>
+<!-- /SECTION:risks -->
 
 </main>
 </div>
@@ -255,11 +278,12 @@ th{font-weight:600;color:var(--muted);font-size:.85rem}
 <button id="panel-close" type="button" aria-label="Close details">×</button>
 <div id="panel-body"></div>
 </aside>
-<script type="application/json" id="details">{"user": {"title": "[Users]", "summary": "[One or two plain sentences.]", "facts": [["[Label]", "[Value]"]], "refs": ["[04 §2]"]}, "app": {"title": "[Our component]", "summary": "[Responsibility in plain words.]", "facts": [["Technology", "[Language, runtime, framework]"], ["Hosting", "[Target]"]], "refs": ["[ADR-000N]"]}, "store": {"title": "[Data store]", "summary": "[What it holds and why.]", "refs": ["[04 §8]"]}, "ext": {"title": "[External system]", "summary": "[What we exchange with it.]", "refs": ["[04 §9]"]}}</script>
 <script>
 (function(){
   var data = {};
-  try { data = JSON.parse(document.getElementById('details').textContent); } catch (e) { console.error('Details data is not valid JSON', e); }
+  document.querySelectorAll('script.details-data').forEach(function(s){
+    try { Object.assign(data, JSON.parse(s.textContent)); } catch (e) { console.error('A details block is not valid JSON', e); }
+  });
   var panel = document.getElementById('panel');
   var closeBtn = document.getElementById('panel-close');
   var lastFocus = null;

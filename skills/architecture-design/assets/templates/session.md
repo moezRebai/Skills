@@ -37,6 +37,9 @@
 | Team and operations | | |
 | Mode-specific topics | | |
 
+## Demo pack
+- Sections done: <none yet>
+
 ## Decisions
 | ADR | Title | Status |
 |---|---|---|
